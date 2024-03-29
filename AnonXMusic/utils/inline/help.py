@@ -105,6 +105,18 @@ def help_back_markup(_):
     )
     return upl
 
+def waifu_back_markup(_):
+    upl = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    text=_["WAIFU_BUTTON"],
+                    callback_data=f"settings_back_waifu",
+                ),
+            ]
+        ]
+    )
+    return upl
 
 def private_help_panel(_):
     buttons = [
