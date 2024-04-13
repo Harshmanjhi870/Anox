@@ -63,6 +63,13 @@ async def notify_ban(user_id):
     except Exception as e:
         print(f"Failed to notify user {user_id} about ban: {e}")
 
+# Function to notify group about the ban
+async def notify_group_ban(chat_id, user_id):
+    try:
+        await app.send_message(chat_id, f"@{user_id} is banned for 10 minutes for spamming.")
+    except Exception as e:
+        print(f"Failed to notify group {chat_id} about ban: {e}")
+
 @app.on_message(filters.group & filters.group, group=6)
 def today_watcher(_, message):
     chat_id = message.chat.id
@@ -75,9 +82,10 @@ def today_watcher(_, message):
     # Check if user sent too many consecutive messages
     if user_id in user_data:
         user_data[user_id]["consecutive_messages"] += 1
-        if user_data[user_id]["consecutive_messages"] >= 12:
+        if user_data[user_id]["consecutive_messages"] >= 7:
             ban_user(user_id)
             asyncio.run(notify_ban(user_id))  # Notify user about the ban
+            asyncio.run(notify_group_ban(chat_id, user_id))  # Notify group about the ban
             return
     else:
         user_data[user_id] = {"consecutive_messages": 1}
@@ -134,3 +142,4 @@ async def today_(_, message):
             await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
     else:
         await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
+
