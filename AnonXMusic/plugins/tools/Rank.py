@@ -116,6 +116,6 @@ async def today_(_, message):
                 user_info = f"{idx}. {user_name} ➠ {total_messages} messages\n"
                 response += user_info
             button = InlineKeyboardMarkup(
-                [[    
+                [    
                    InlineKeyboardButton("ᴏᴠᴇʀᴀʟʟ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ", callback_data="overall"),
                 ]
