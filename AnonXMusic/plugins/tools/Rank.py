@@ -90,6 +90,13 @@ def today_watcher(_, message):
     else:
         user_data[user_id] = {"consecutive_messages": 1}
 
+    # Check if the message is a reply
+    if message.reply_to_message:
+        replied_user_id = message.reply_to_message.from_user.id
+        # Reset consecutive messages count if the user is engaging in conversation with others
+        if replied_user_id != user_id:
+            user_data[user_id]["consecutive_messages"] = 0
+
     if chat_id in today and user_id in today[chat_id]:
         today[chat_id][user_id]["total_messages"] += 1
     else:
@@ -101,7 +108,7 @@ def today_watcher(_, message):
             today[chat_id][user_id]["total_messages"] = 1
 
     # Check if user is spamming
-    if today[chat_id][user_id]["total_messages"] > 10:
+    if today[chat_id][user_id]["total_messages"] > 5:
         ban_user(user_id)
 
 @app.on_message(filters.group & filters.group, group=11)
@@ -142,4 +149,3 @@ async def today_(_, message):
             await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
     else:
         await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
-
