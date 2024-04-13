@@ -25,7 +25,7 @@ collection = db["ranking"]
 
 user_data = {}
 today = {}
-banned_users = {}
+last_user = {}
 
 MISHI = [
     "https://telegra.ph/file/a6a5b78007e4ca766794a.jpg",
@@ -48,54 +48,27 @@ MISHI = [
     "https://telegra.ph/file/a6a5b78007e4ca766794a.jpg",
 ]
 
-# Function to check if a user is banned
-def is_user_banned(user_id):
-    return user_id in banned_users and time.time() < banned_users[user_id]
-
-# Function to ban a user for 10 minutes
-def ban_user(user_id):
-    banned_users[user_id] = time.time() + 600
-
-# Function to notify user about the ban
-async def notify_ban(user_id):
-    try:
-        await app.send_message(user_id, "You are banned for 10 minutes.")
-    except Exception as e:
-        print(f"Failed to notify user {user_id} about ban: {e}")
-
-# Function to notify group about the ban
-async def notify_group_ban(chat_id, user_id):
-    try:
-        await app.send_message(chat_id, f"@{user_id} is banned for 10 minutes for spamming.")
-    except Exception as e:
-        print(f"Failed to notify group {chat_id} about ban: {e}")
 
 @app.on_message(filters.group & filters.group, group=6)
-def today_watcher(_, message):
+async def today_watcher(_, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
 
-    # Check if user is banned, if yes, return
-    if is_user_banned(user_id):
-        return
-
     # Check if user sent too many consecutive messages
-    if user_id in user_data:
-        user_data[user_id]["consecutive_messages"] += 1
-        if user_data[user_id]["consecutive_messages"] >= 7:
+    if chat_id in last_user and last_user[chat_id]['user_id'] == user_id:
+        last_user[chat_id]['count'] += 1
+        if last_user[chat_id]['count'] >= 10:
+            await message.reply_text(f"⚠️ Don't Spam {message.from_user.first_name}...\nYour Messages Will be ignored for 10 Minutes...")
             ban_user(user_id)
-            asyncio.run(notify_ban(user_id))  # Notify user about the ban
-            asyncio.run(notify_group_ban(chat_id, user_id))  # Notify group about the ban
+            asyncio.run(notify_ban(user_id))
+            asyncio.run(notify_group_ban(chat_id, user_id))
             return
     else:
-        user_data[user_id] = {"consecutive_messages": 1}
+        last_user[chat_id] = {'user_id': user_id, 'count': 1}
 
-    # Check if the message is a reply
+    # Reset last user if message is a reply
     if message.reply_to_message:
-        replied_user_id = message.reply_to_message.from_user.id
-        # Reset consecutive messages count if the user is engaging in conversation with others
-        if replied_user_id != user_id:
-            user_data[user_id]["consecutive_messages"] = 0
+        last_user[chat_id] = {'user_id': None, 'count': 0}
 
     if chat_id in today and user_id in today[chat_id]:
         today[chat_id][user_id]["total_messages"] += 1
@@ -115,10 +88,6 @@ def today_watcher(_, message):
 def _watcher(_, message):
     user_id = message.from_user.id
 
-    # Check if user is banned, if yes, return
-    if is_user_banned(user_id):
-        return
-    
     user_data.setdefault(user_id, {}).setdefault("total_messages", 0)
     user_data[user_id]["total_messages"] += 1    
     collection.update_one({"_id": user_id}, {"$inc": {"total_messages": 1}}, upsert=True)
@@ -143,9 +112,4 @@ async def today_(_, message):
             button = InlineKeyboardMarkup(
                 [[    
                    InlineKeyboardButton("ᴏᴠᴇʀᴀʟʟ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ", callback_data="overall"),
-                ]])
-            await message.reply_photo(random.choice(MISHI), caption=response, reply_markup=button)
-        else:
-            await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
-    else:
-        await message.reply_text("❅ ɴᴏ ᴅᴀᴛᴀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛᴏᴅᴀʏ.")
+                ]
