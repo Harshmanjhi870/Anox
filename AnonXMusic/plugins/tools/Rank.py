@@ -9,7 +9,6 @@ from pyrogram.types import (CallbackQuery, InlineKeyboardButton,
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.types import InputMediaPhoto
 from typing import Union
-
 import asyncio
 import random
 from pyrogram import Client, filters
@@ -26,6 +25,7 @@ collection = db["ranking"]
 
 user_data = {}
 today = {}
+banned_users = {}
 
 MISHI = [
     "https://telegra.ph/file/a6a5b78007e4ca766794a.jpg",
@@ -48,10 +48,40 @@ MISHI = [
     "https://telegra.ph/file/a6a5b78007e4ca766794a.jpg",
 ]
 
+# Function to check if a user is banned
+def is_user_banned(user_id):
+    return user_id in banned_users and time.time() < banned_users[user_id]
+
+# Function to ban a user for 10 minutes
+def ban_user(user_id):
+    banned_users[user_id] = time.time() + 600
+
+# Function to notify user about the ban
+async def notify_ban(user_id):
+    try:
+        await app.send_message(user_id, "You are banned for 10 minutes.")
+    except Exception as e:
+        print(f"Failed to notify user {user_id} about ban: {e}")
+
 @app.on_message(filters.group & filters.group, group=6)
 def today_watcher(_, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
+
+    # Check if user is banned, if yes, return
+    if is_user_banned(user_id):
+        return
+
+    # Check if user sent too many consecutive messages
+    if user_id in user_data:
+        user_data[user_id]["consecutive_messages"] += 1
+        if user_data[user_id]["consecutive_messages"] >= 12:
+            ban_user(user_id)
+            asyncio.run(notify_ban(user_id))  # Notify user about the ban
+            return
+    else:
+        user_data[user_id] = {"consecutive_messages": 1}
+
     if chat_id in today and user_id in today[chat_id]:
         today[chat_id][user_id]["total_messages"] += 1
     else:
@@ -62,9 +92,18 @@ def today_watcher(_, message):
         else:
             today[chat_id][user_id]["total_messages"] = 1
 
+    # Check if user is spamming
+    if today[chat_id][user_id]["total_messages"] > 10:
+        ban_user(user_id)
+
 @app.on_message(filters.group & filters.group, group=11)
 def _watcher(_, message):
-    user_id = message.from_user.id    
+    user_id = message.from_user.id
+
+    # Check if user is banned, if yes, return
+    if is_user_banned(user_id):
+        return
+    
     user_data.setdefault(user_id, {}).setdefault("total_messages", 0)
     user_data[user_id]["total_messages"] += 1    
     collection.update_one({"_id": user_id}, {"$inc": {"total_messages": 1}}, upsert=True)
