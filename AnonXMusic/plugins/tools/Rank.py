@@ -23,6 +23,8 @@ mongo_client = MongoClient(MONGO_DB_URI)
 db = mongo_client["natu_rankings"]
 collection = db["ranking"]
 
+spam_counters = {}
+warned_users = {}
 user_data = {}
 today = {}
 last_user = {}
@@ -56,13 +58,17 @@ async def today_watcher(_, message):
 
     # Check if user sent too many consecutive messages
     if chat_id in last_user and last_user[chat_id]['user_id'] == user_id:
-        last_user[chat_id]['count'] += 1
-        if last_user[chat_id]['count'] >= 10:
-            await message.reply_text(f"⚠️ Don't Spam {message.from_user.first_name}...\nYour Messages Will be ignored for 10 Minutes...")
-            ban_user(user_id)
-            asyncio.run(notify_ban(user_id))
-            asyncio.run(notify_group_ban(chat_id, user_id))
-            return
+            last_user[chat_id]['count'] += 1
+            if last_user[chat_id]['count'] >= 10:
+            
+                if user_id in warned_users and time.time() - warned_users[user_id] < 600:
+                    return
+                else:
+                    
+                    await update.message.reply_text(f"⚠️ Don't Spam {update.effective_user.first_name}...\nYour Messages Will be ignored for 10 Minutes...")
+                    warned_users[user_id] = time.time()
+                    return
+                  
     else:
         last_user[chat_id] = {'user_id': user_id, 'count': 1}
 
